@@ -6,6 +6,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodData;
@@ -35,6 +36,9 @@ public abstract class PlayerEntityMixin extends LivingEntity implements PlayerEn
 
     @Shadow
     protected FoodData foodData;
+
+    @Unique
+    private AttributeModifier sol_valheim_hpmod = new AttributeModifier("Valheim Food HP Buff", 0, AttributeModifier.Operation.ADDITION);
 
     @Override
     @Unique
@@ -98,14 +102,40 @@ public abstract class PlayerEntityMixin extends LivingEntity implements PlayerEn
             sol_valheim$trackData();
         }
 
-        float maxhp = Math.min(40, (SOLValheim.Config.common.startingHealth * 2) + sol_valheim$food_data.getTotalFoodNutrition());
+        //float maxhp = Math.min(40, (SOLValheim.Config.common.startingHealth * 2) + sol_valheim$food_data.getTotalFoodNutrition());
+        //if (((int)maxhp % 2) != 0)
+        //    maxhp += 1;
 
+        float maxhp = Math.min(SOLValheim.Config.common.maxFoodHealth * 2, (SOLValheim.Config.common.startingHealth * 2) + sol_valheim$food_data.getTotalFoodNutrition());
+
+        //New method for calculating player health, increasing compatibility with other sources of health gain
+        //bookkeeping stuff (By Zoruea)
         Player player = (Player) (LivingEntity) this;
         player.getFoodData().setSaturation(0);
 
-        player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(maxhp);
+        /*player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(maxhp);
         //if (getHealth() > maxhp)
-        //    setHealth(maxhp);
+        //    setHealth(maxhp);*/
+
+        //By Zoruea
+        //set player base hp
+        double basehp = SOLValheim.Config.common.startingHealth * 2;
+        if (basehp > player.getAttribute(Attributes.MAX_HEALTH).getBaseValue()) {
+            player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(basehp);
+        }
+
+        //build variable space for transform
+        double foodhp = Math.min(SOLValheim.Config.common.maxFoodHealth * 2, sol_valheim$food_data.getTotalFoodNutrition());
+
+
+        //Apply the transform to player health
+        if (player.getAttribute(Attributes.MAX_HEALTH).getModifier(sol_valheim_hpmod.getId()) == null) {
+            player.getAttribute(Attributes.MAX_HEALTH).addPermanentModifier(sol_valheim_hpmod);
+        } else if (player.getAttribute(Attributes.MAX_HEALTH).getModifier(sol_valheim_hpmod.getId()).getAmount() != foodhp) {
+            player.getAttribute(Attributes.MAX_HEALTH).removeModifier(sol_valheim_hpmod.getId());
+            sol_valheim_hpmod = new AttributeModifier("Valheim Food HP Buff", foodhp, AttributeModifier.Operation.ADDITION);
+            player.getAttribute(Attributes.MAX_HEALTH).addPermanentModifier(sol_valheim_hpmod);
+        }
 
         if (SOLValheim.Config.common.speedBoost > 0.01f) {
             var attr = player.getAttribute(Attributes.MOVEMENT_SPEED);
