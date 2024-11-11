@@ -26,6 +26,7 @@ import vice.sol_valheim.accessors.PlayerEntityMixinDataAccessor;
 import vice.sol_valheim.ValheimFoodData;
 
 import java.util.ArrayList;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Mixin({Player.class})
@@ -38,7 +39,7 @@ public abstract class PlayerEntityMixin extends LivingEntity implements PlayerEn
     protected FoodData foodData;
 
     @Unique
-    private AttributeModifier sol_valheim_hpmod = new AttributeModifier("Valheim Food HP Buff", 0, AttributeModifier.Operation.ADDITION);
+    private AttributeModifier sol_valheim_hpmod = new AttributeModifier(UUID.fromString("21267379-91a8-44cb-95d1-1073b3c32f4a"), "Valheim Food HP Buff", 0, AttributeModifier.Operation.ADDITION);
 
     @Override
     @Unique
@@ -133,7 +134,7 @@ public abstract class PlayerEntityMixin extends LivingEntity implements PlayerEn
             player.getAttribute(Attributes.MAX_HEALTH).addPermanentModifier(sol_valheim_hpmod);
         } else if (player.getAttribute(Attributes.MAX_HEALTH).getModifier(sol_valheim_hpmod.getId()).getAmount() != foodhp) {
             player.getAttribute(Attributes.MAX_HEALTH).removeModifier(sol_valheim_hpmod.getId());
-            sol_valheim_hpmod = new AttributeModifier("Valheim Food HP Buff", foodhp, AttributeModifier.Operation.ADDITION);
+            sol_valheim_hpmod = new AttributeModifier(UUID.fromString("21267379-91a8-44cb-95d1-1073b3c32f4a"),"Valheim Food HP Buff", foodhp, AttributeModifier.Operation.ADDITION);
             player.getAttribute(Attributes.MAX_HEALTH).addPermanentModifier(sol_valheim_hpmod);
         }
 
@@ -165,50 +166,50 @@ public abstract class PlayerEntityMixin extends LivingEntity implements PlayerEn
         #if PRE_CURRENT_MC_1_19_2
         if (source == DamageSource.STARVE) {
         #elif POST_CURRENT_MC_1_20_1
-        if (source == this.damageSources().starve()) {
+            if (source == this.damageSources().starve()) {
         #endif
-            info.setReturnValue(Boolean.FALSE);
-            info.cancel();
+                info.setReturnValue(Boolean.FALSE);
+                info.cancel();
+            }
         }
-    }
 
-    @Inject(at = {@At("TAIL")}, method = {"addAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V"})
-    private void onWriteCustomData(CompoundTag nbt, CallbackInfo info) {
-        nbt.put("sol_food_data", sol_valheim$food_data.save(new CompoundTag()));
-    }
+        @Inject(at = {@At("TAIL")}, method = {"addAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V"})
+        private void onWriteCustomData(CompoundTag nbt, CallbackInfo info) {
+            nbt.put("sol_food_data", sol_valheim$food_data.save(new CompoundTag()));
+        }
 
-    @Inject(at = {@At("TAIL")}, method = {"readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V"})
-    private void onReadCustomData(CompoundTag nbt, CallbackInfo info) {
-        if (sol_valheim$food_data == null)
-            sol_valheim$food_data = new ValheimFoodData();
+        @Inject(at = {@At("TAIL")}, method = {"readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V"})
+        private void onReadCustomData(CompoundTag nbt, CallbackInfo info) {
+            if (sol_valheim$food_data == null)
+                sol_valheim$food_data = new ValheimFoodData();
 
-        var foodData = ValheimFoodData.read(nbt.getCompound("sol_food_data"));
-        sol_valheim$food_data.MaxItemSlots = foodData.MaxItemSlots;
-        sol_valheim$food_data.DrinkSlot = foodData.DrinkSlot;
-        sol_valheim$food_data.ItemEntries = foodData.ItemEntries.stream()
-                .map(ValheimFoodData.EatenFoodItem::new)
-                .collect(Collectors.toCollection(ArrayList::new));
+            var foodData = ValheimFoodData.read(nbt.getCompound("sol_food_data"));
+            sol_valheim$food_data.MaxItemSlots = foodData.MaxItemSlots;
+            sol_valheim$food_data.DrinkSlot = foodData.DrinkSlot;
+            sol_valheim$food_data.ItemEntries = foodData.ItemEntries.stream()
+                    .map(ValheimFoodData.EatenFoodItem::new)
+                    .collect(Collectors.toCollection(ArrayList::new));
 
-        sol_valheim$trackData();
-    }
+            sol_valheim$trackData();
+        }
 
-    @Unique
-    private void sol_valheim$trackData() {
+        @Unique
+        private void sol_valheim$trackData() {
 
         #if PRE_CURRENT_MC_1_19_2
-        this.entityData.set(sol_valheim$DATA_ACCESSOR, sol_valheim$food_data);
+            this.entityData.set(sol_valheim$DATA_ACCESSOR, sol_valheim$food_data);
         #elif POST_CURRENT_MC_1_20_1
-        this.entityData.set(sol_valheim$DATA_ACCESSOR, sol_valheim$food_data, true);
+            this.entityData.set(sol_valheim$DATA_ACCESSOR, sol_valheim$food_data, true);
         #endif
 
 
-    }
+        }
 
-    @Inject(at = {@At("TAIL")}, method = {"defineSynchedData"})
-    private void onInitDataTracker(CallbackInfo info) {
-        if (sol_valheim$food_data == null)
-            sol_valheim$food_data = new ValheimFoodData();
+        @Inject(at = {@At("TAIL")}, method = {"defineSynchedData"})
+        private void onInitDataTracker(CallbackInfo info) {
+            if (sol_valheim$food_data == null)
+                sol_valheim$food_data = new ValheimFoodData();
 
-        this.entityData.define(sol_valheim$DATA_ACCESSOR, sol_valheim$food_data);
+            this.entityData.define(sol_valheim$DATA_ACCESSOR, sol_valheim$food_data);
+        }
     }
-}
